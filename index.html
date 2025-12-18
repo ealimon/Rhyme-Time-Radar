@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rhyme Time Radar</title>
+    <title>Rhyme Time Radar: Audio Edition</title>
     <style>
         :root {
             --radar-green: #00ff41;
@@ -86,6 +86,27 @@
     <div id="status" class="message"></div>
 
     <script>
+        // --- AUDIO ENGINE ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playPing(frequency, type) {
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.type = type; // 'sine' for smooth, 'square' for retro
+            oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.5);
+        }
+
+        // --- GAME LOGIC ---
         const missionData = [
             { target: "CAT", rhymes: ["BAT", "HAT", "MAT"], distractors: ["DOG", "PIN", "SUN"] },
             { target: "FIN", rhymes: ["PIN", "WIN", "TIN"], distractors: ["BOX", "CAT", "TEN"] },
@@ -101,10 +122,8 @@
             document.getElementById('target-word').innerText = data.target;
             foundCount = 0;
 
-            // Remove old signals
             document.querySelectorAll('.signal').forEach(s => s.remove());
 
-            // Combine and shuffle words
             const allWords = [...data.rhymes.map(w => ({w, r:true})), ...data.distractors.map(w => ({w, r:false}))];
             allWords.sort(() => Math.random() - 0.5);
 
@@ -113,7 +132,6 @@
                 btn.className = 'signal';
                 btn.innerText = item.w;
                 
-                // Random position on radar
                 const angle = (i / allWords.length) * Math.PI * 2;
                 const dist = 120 + Math.random() * 50;
                 btn.style.left = `${200 + Math.cos(angle) * dist - 30}px`;
@@ -121,12 +139,14 @@
 
                 btn.onclick = () => {
                     if(item.r) {
+                        playPing(880, 'sine'); // High pitch success ping
                         btn.style.opacity = "0";
                         setTimeout(() => btn.remove(), 300);
                         document.getElementById('status').innerText = "🎯 SIGNAL ACQUIRED!";
                         foundCount++;
                         if(foundCount === data.rhymes.length) nextMission();
                     } else {
+                        playPing(150, 'sawtooth'); // Low "buzz" for error
                         document.getElementById('status').innerText = "⚠️ NOISE DETECTED - TRY AGAIN";
                     }
                 };
@@ -143,6 +163,13 @@
                 document.getElementById('status').innerText = "🏆 ALL SECTORS CLEAR! RADAR MASTER!";
             }
         }
+
+        // Initialize audio on first click (browsers require user interaction for sound)
+        window.addEventListener('mousedown', () => {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        });
 
         loadMission();
     </script>
