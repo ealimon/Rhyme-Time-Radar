@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhyme Time Radar</title>
+    <style>
+        :root {
+            --radar-green: #00ff41;
+            --bg-black: #050505;
+            --text-gray: #888;
+        }
+        body {
+            background-color: var(--bg-black);
+            color: var(--radar-green);
+            font-family: 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .radar-screen {
+            width: 400px;
+            height: 400px;
+            border: 4px solid var(--radar-green);
+            border-radius: 50%;
+            position: relative;
+            background: radial-gradient(circle, #002200 0%, #000 70%);
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+        }
+        .sweep {
+            width: 50%;
+            height: 50%;
+            background: linear-gradient(45deg, rgba(0,255,65,0.4) 0%, transparent 100%);
+            position: absolute;
+            top: 0; left: 0;
+            transform-origin: bottom right;
+            animation: rotate 4s linear infinite;
+            border-right: 2px solid var(--radar-green);
+        }
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .target-box {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+            background: var(--bg-black);
+            padding: 10px;
+            border: 2px solid var(--radar-green);
+        }
+        .signal {
+            position: absolute;
+            padding: 8px 15px;
+            border: 1px solid var(--radar-green);
+            background: rgba(0, 40, 0, 0.8);
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .signal:hover { background: var(--radar-green); color: black; }
+        .message { margin-top: 20px; font-size: 1.2rem; height: 30px; }
+    </style>
+</head>
+<body>
+
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h1>📡 RHYME TIME RADAR</h1>
+        <p>Click signals that rhyme with the Target!</p>
+    </div>
+
+    <div class="radar-screen" id="radar">
+        <div class="sweep"></div>
+        <div class="target-box">
+            <div style="font-size: 0.8rem; color: var(--text-gray);">TARGET</div>
+            <div id="target-word" style="font-size: 1.5rem;">CAT</div>
+        </div>
+    </div>
+
+    <div id="status" class="message"></div>
+
+    <script>
+        const missionData = [
+            { target: "CAT", rhymes: ["BAT", "HAT", "MAT"], distractors: ["DOG", "PIN", "SUN"] },
+            { target: "FIN", rhymes: ["PIN", "WIN", "TIN"], distractors: ["BOX", "CAT", "TEN"] },
+            { target: "BUG", rhymes: ["MUG", "RUG", "HUG"], distractors: ["BED", "SIT", "TOP"] }
+        ];
+
+        let currentMission = 0;
+        let foundCount = 0;
+
+        function loadMission() {
+            const radar = document.getElementById('radar');
+            const data = missionData[currentMission];
+            document.getElementById('target-word').innerText = data.target;
+            foundCount = 0;
+
+            // Remove old signals
+            document.querySelectorAll('.signal').forEach(s => s.remove());
+
+            // Combine and shuffle words
+            const allWords = [...data.rhymes.map(w => ({w, r:true})), ...data.distractors.map(w => ({w, r:false}))];
+            allWords.sort(() => Math.random() - 0.5);
+
+            allWords.forEach((item, i) => {
+                const btn = document.createElement('div');
+                btn.className = 'signal';
+                btn.innerText = item.w;
+                
+                // Random position on radar
+                const angle = (i / allWords.length) * Math.PI * 2;
+                const dist = 120 + Math.random() * 50;
+                btn.style.left = `${200 + Math.cos(angle) * dist - 30}px`;
+                btn.style.top = `${200 + Math.sin(angle) * dist - 20}px`;
+
+                btn.onclick = () => {
+                    if(item.r) {
+                        btn.style.opacity = "0";
+                        setTimeout(() => btn.remove(), 300);
+                        document.getElementById('status').innerText = "🎯 SIGNAL ACQUIRED!";
+                        foundCount++;
+                        if(foundCount === data.rhymes.length) nextMission();
+                    } else {
+                        document.getElementById('status').innerText = "⚠️ NOISE DETECTED - TRY AGAIN";
+                    }
+                };
+                radar.appendChild(btn);
+            });
+        }
+
+        function nextMission() {
+            currentMission++;
+            if(currentMission < missionData.length) {
+                document.getElementById('status').innerText = "MISSION SUCCESS! SCANNING NEXT SECTOR...";
+                setTimeout(loadMission, 2000);
+            } else {
+                document.getElementById('status').innerText = "🏆 ALL SECTORS CLEAR! RADAR MASTER!";
+            }
+        }
+
+        loadMission();
+    </script>
+</body>
+</html>
