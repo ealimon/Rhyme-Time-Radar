@@ -3,175 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rhyme Time Radar: Audio Edition</title>
+    <title>Rhyme Time Radar: Master Edition</title>
     <style>
         :root {
-            --radar-green: #00ff41;
-            --bg-black: #050505;
-            --text-gray: #888;
+            --lvl1-color: #00ff41; --lvl2-color: #00d4ff; --lvl3-color: #f59e0b;
+            --radar-accent: var(--lvl1-color);
+            --bg-black: #050505; --panel: #111;
         }
         body {
-            background-color: var(--bg-black);
-            color: var(--radar-green);
-            font-family: 'Courier New', monospace;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
+            background-color: var(--bg-black); color: var(--radar-accent);
+            font-family: 'Courier New', monospace; margin: 0; overflow: hidden;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;
         }
-        .radar-screen {
-            width: 400px;
-            height: 400px;
-            border: 4px solid var(--radar-green);
-            border-radius: 50%;
-            position: relative;
-            background: radial-gradient(circle, #002200 0%, #000 70%);
-            box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+        .radar-container {
+            width: 450px; height: 450px; border: 4px solid var(--radar-accent);
+            border-radius: 50%; position: relative; background: radial-gradient(circle, #001100 0%, #000 80%);
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.1); transition: border-color 0.8s;
         }
         .sweep {
-            width: 50%;
-            height: 50%;
-            background: linear-gradient(45deg, rgba(0,255,65,0.4) 0%, transparent 100%);
-            position: absolute;
-            top: 0; left: 0;
-            transform-origin: bottom right;
-            animation: rotate 4s linear infinite;
-            border-right: 2px solid var(--radar-green);
+            width: 50%; height: 50%; position: absolute; top: 0; left: 0;
+            background: linear-gradient(45deg, rgba(0,255,65,0.3) 0%, transparent 70%);
+            transform-origin: bottom right; animation: rotate 4s linear infinite;
+            border-right: 2px solid var(--radar-accent); z-index: 1;
         }
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        .target-box {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            z-index: 10;
-            background: var(--bg-black);
-            padding: 10px;
-            border: 2px solid var(--radar-green);
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        .target-center {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: var(--bg-black); border: 2px solid var(--radar-accent);
+            padding: 15px; z-index: 10; text-align: center; min-width: 80px;
         }
         .signal {
-            position: absolute;
-            padding: 8px 15px;
-            border: 1px solid var(--radar-green);
-            background: rgba(0, 40, 0, 0.8);
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s;
+            position: absolute; padding: 10px 18px; border: 1px solid var(--radar-accent);
+            background: rgba(0, 20, 0, 0.9); cursor: pointer; font-weight: bold;
+            z-index: 5; transition: transform 0.2s, opacity 0.5s;
         }
-        .signal:hover { background: var(--radar-green); color: black; }
-        .message { margin-top: 20px; font-size: 1.2rem; height: 30px; }
+        .signal:hover { background: var(--radar-accent); color: #000; transform: scale(1.1); }
+        
+        .hud { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; }
+        .rank-tag { font-size: 0.8rem; letter-spacing: 4px; margin-bottom: 5px; }
+        .msg { height: 40px; margin-top: 20px; font-size: 1.2rem; font-weight: bold; }
+        
+        #final-screen { display: none; text-align: center; }
+        .btn-next { 
+            display: none; padding: 15px 30px; background: var(--radar-accent); 
+            color: #000; border: none; font-weight: bold; cursor: pointer; margin-top: 20px;
+        }
     </style>
 </head>
 <body>
 
-    <div style="text-align: center; margin-bottom: 20px;">
-        <h1>📡 RHYME TIME RADAR</h1>
-        <p>Click signals that rhyme with the Target!</p>
+    <div class="hud">
+        <div id="rank" class="rank-tag">RANK: RADAR TECHNICIAN</div>
+        <h1 id="sector-title">SECTOR 1: CVC SHORT VOWELS</h1>
     </div>
 
-    <div class="radar-screen" id="radar">
-        <div class="sweep"></div>
-        <div class="target-box">
-            <div style="font-size: 0.8rem; color: var(--text-gray);">TARGET</div>
-            <div id="target-word" style="font-size: 1.5rem;">CAT</div>
+    <div class="radar-container" id="radar">
+        <div class="sweep" id="sweep-line"></div>
+        <div class="target-center">
+            <div style="font-size: 0.7rem; color: #666;">TARGET</div>
+            <div id="target-word" style="font-size: 1.6rem;">CAT</div>
         </div>
     </div>
 
-    <div id="status" class="message"></div>
+    <div id="status" class="msg"></div>
+    <button id="nextBtn" class="btn-next" onclick="handleNext()">NEXT SECTOR ➔</button>
 
-    <script>
-        // --- AUDIO ENGINE ---
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    <div id="final-screen">
+        <h1 style="font-size: 3rem;">🏆 MISSION COMPLETE</h1>
+        <h2>Rank Attained: Galaxy Navigator</h2>
+        <p>All rhyming signals identified and secured.</p>
+        <button onclick="location.reload()" class="btn-next" style="display:inline-block">RESTART RADAR</button>
+    </div>
 
-        function playPing(frequency, type) {
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
+<script>
+    // --- AUDIO ENGINE ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSfx(freq, type, dur) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + dur);
+    }
 
-            oscillator.type = type; // 'sine' for smooth, 'square' for retro
-            oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-            
-            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
-
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-
-            oscillator.start();
-            oscillator.stop(audioCtx.currentTime + 0.5);
+    // --- MISSION DATA ---
+    const levels = [
+        {
+            name: "SECTOR 1: CVC SHORT VOWELS", rank: "RANK: RADAR TECHNICIAN", color: "#00ff41",
+            missions: [
+                { t: "CAT", r: ["BAT", "HAT", "MAT"], d: ["DOG", "SUN", "PIN"] },
+                { t: "PIN", r: ["FIN", "WIN", "TIN"], d: ["BOX", "NET", "MAP"] }
+            ]
+        },
+        {
+            name: "SECTOR 2: LONG VOWELS & SILENT E", rank: "RANK: SIGNAL COMMANDER", color: "#00d4ff",
+            missions: [
+                { t: "CAKE", r: ["LAKE", "BAKE", "RAKE"], d: ["BACK", "COOK", "TAKE"] },
+                { t: "BONE", r: ["CONE", "ZONE", "TONE"], d: ["DONE", "BOON", "BENT"] }
+            ]
+        },
+        {
+            name: "SECTOR 3: BLENDS & DIGRAPHS", rank: "RANK: GALAXY NAVIGATOR", color: "#f59e0b",
+            missions: [
+                { t: "TRUCK", r: ["STUCK", "LUCK", "DUCK"], d: ["TRACK", "TRICK", "TANK"] },
+                { t: "BRIGHT", r: ["LIGHT", "NIGHT", "SIGHT"], d: ["BRING", "BLAST", "BIT"] }
+            ]
         }
+    ];
 
-        // --- GAME LOGIC ---
-        const missionData = [
-            { target: "CAT", rhymes: ["BAT", "HAT", "MAT"], distractors: ["DOG", "PIN", "SUN"] },
-            { target: "FIN", rhymes: ["PIN", "WIN", "TIN"], distractors: ["BOX", "CAT", "TEN"] },
-            { target: "BUG", rhymes: ["MUG", "RUG", "HUG"], distractors: ["BED", "SIT", "TOP"] }
-        ];
+    let curLvl = 0, curMiss = 0, found = 0;
 
-        let currentMission = 0;
-        let foundCount = 0;
+    function initRadar() {
+        const lvl = levels[curLvl];
+        const data = lvl.missions[curMiss];
+        document.documentElement.style.setProperty('--radar-accent', lvl.color);
+        document.getElementById('rank').innerText = lvl.rank;
+        document.getElementById('sector-title').innerText = lvl.name;
+        document.getElementById('target-word').innerText = data.t;
+        document.getElementById('nextBtn').style.display = 'none';
+        
+        found = 0;
+        document.querySelectorAll('.signal').forEach(s => s.remove());
 
-        function loadMission() {
-            const radar = document.getElementById('radar');
-            const data = missionData[currentMission];
-            document.getElementById('target-word').innerText = data.target;
-            foundCount = 0;
+        const words = [...data.r.map(w => ({w, isR:true})), ...data.d.map(w => ({w, isR:false}))];
+        words.sort(() => Math.random() - 0.5).forEach((item, i) => {
+            const s = document.createElement('div');
+            s.className = 'signal'; s.innerText = item.w;
+            const angle = (i / words.length) * Math.PI * 2;
+            const dist = 130 + Math.random() * 60;
+            s.style.left = `${225 + Math.cos(angle) * dist - 30}px`;
+            s.style.top = `${225 + Math.sin(angle) * dist - 20}px`;
 
-            document.querySelectorAll('.signal').forEach(s => s.remove());
-
-            const allWords = [...data.rhymes.map(w => ({w, r:true})), ...data.distractors.map(w => ({w, r:false}))];
-            allWords.sort(() => Math.random() - 0.5);
-
-            allWords.forEach((item, i) => {
-                const btn = document.createElement('div');
-                btn.className = 'signal';
-                btn.innerText = item.w;
-                
-                const angle = (i / allWords.length) * Math.PI * 2;
-                const dist = 120 + Math.random() * 50;
-                btn.style.left = `${200 + Math.cos(angle) * dist - 30}px`;
-                btn.style.top = `${200 + Math.sin(angle) * dist - 20}px`;
-
-                btn.onclick = () => {
-                    if(item.r) {
-                        playPing(880, 'sine'); // High pitch success ping
-                        btn.style.opacity = "0";
-                        setTimeout(() => btn.remove(), 300);
-                        document.getElementById('status').innerText = "🎯 SIGNAL ACQUIRED!";
-                        foundCount++;
-                        if(foundCount === data.rhymes.length) nextMission();
-                    } else {
-                        playPing(150, 'sawtooth'); // Low "buzz" for error
-                        document.getElementById('status').innerText = "⚠️ NOISE DETECTED - TRY AGAIN";
-                    }
-                };
-                radar.appendChild(btn);
-            });
-        }
-
-        function nextMission() {
-            currentMission++;
-            if(currentMission < missionData.length) {
-                document.getElementById('status').innerText = "MISSION SUCCESS! SCANNING NEXT SECTOR...";
-                setTimeout(loadMission, 2000);
-            } else {
-                document.getElementById('status').innerText = "🏆 ALL SECTORS CLEAR! RADAR MASTER!";
-            }
-        }
-
-        // Initialize audio on first click (browsers require user interaction for sound)
-        window.addEventListener('mousedown', () => {
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+            s.onclick = () => {
+                if(item.isR) {
+                    playSfx(880, 'sine', 0.5); found++;
+                    s.style.opacity = "0"; s.style.pointerEvents = "none";
+                    document.getElementById('status').innerText = "🎯 SIGNAL ACQUIRED";
+                    if(found === data.r.length) showNextBtn();
+                } else {
+                    playSfx(120, 'sawtooth', 0.3);
+                    document.getElementById('status').innerText = "⚠️ NOISE DETECTED";
+                }
+            };
+            document.getElementById('radar').appendChild(s);
         });
+    }
 
-        loadMission();
-    </script>
+    function showNextBtn() {
+        document.getElementById('status').innerText = "SECTOR SCAN COMPLETE";
+        document.getElementById('nextBtn').style.display = 'inline-block';
+    }
+
+    function handleNext() {
+        curMiss++;
+        if(curMiss >= levels[curLvl].missions.length) {
+            curLvl++; curMiss = 0;
+        }
+        if(curLvl >= levels.length) {
+            document.body.innerHTML = document.getElementById('final-screen').innerHTML;
+        } else {
+            document.getElementById('status').innerText = "";
+            initRadar();
+        }
+    }
+
+    window.addEventListener('mousedown', () => { if(audioCtx.state === 'suspended') audioCtx.resume(); });
+    initRadar();
+</script>
 </body>
 </html>
